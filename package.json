@@ -1,0 +1,45 @@
+{
+  "name": "risupack",
+  "version": "0.1.0",
+  "description": "Command-line tools for packing and unpacking RisuAI modules",
+  "license": "AGPL-3.0-only",
+  "bin": {
+    "risupack": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "vendor"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "vp build && tsc --project tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "prepack": "npm run check && npm run build",
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
+    "vite-plus": "0.2.9"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "onFail": "download",
+      "version": "12.0.2"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
