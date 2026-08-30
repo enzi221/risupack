@@ -68,6 +68,7 @@ Use the following manifest structure.
       "name": "background"
     }
   ],
+  "card": "card.json",
   "description": "Module description",
   "hideIcon": false,
   "icon": "assets/icon.png",
@@ -111,6 +112,7 @@ Use the following manifest structure.
 - `license`: Package license identifier or text.
 - `tags`: Array of package tags. Defaults to an empty array.
 - `output`: Output path used when the CLI output argument is omitted. Defaults to `../dist/<sanitized-name>.charx` relative to the manifest directory.
+- `card`: Source character card whose character fields are preserved. Module-managed metadata, lorebooks, assets, CSS, and toggles are rebuilt from the manifest.
 - `CSS`: Custom CSS source.
 - `toggles`: Module toggle source.
 - `icon`: Main module icon path. The builder supplies an empty default icon when omitted.

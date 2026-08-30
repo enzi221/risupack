@@ -1,6 +1,6 @@
 {
   "name": "risupack",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Command-line tools for packing and unpacking RisuAI modules",
   "license": "AGPL-3.0-only",
   "bin": {

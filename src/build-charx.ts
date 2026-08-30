@@ -268,7 +268,7 @@ function buildLorebook(manifest, manifestDirectory) {
         const outputPath = entry.bundleOutput
           ? path.resolve(manifestDirectory, entry.bundleOutput)
           : path.join(temporaryDirectory, `lorebook-${index}.lua`);
-        content = bundleLua(entryPath, outputPath);
+        content = readBundledLua(entryPath, outputPath);
       } else {
         content = readSource(
           manifestDirectory,
@@ -420,7 +420,10 @@ function createAssetFiles(manifest, manifestDirectory) {
   return { cardAssets, files };
 }
 
-function createCard(manifest, lorebook, cardAssets) {
+function createCard(manifest, lorebook, cardAssets, sourceCard?: Record<string, any>) {
+  const sourceData = sourceCard?.data ?? {};
+  const sourceExtensions = sourceData.extensions ?? {};
+  const sourceRisuAI = sourceExtensions.risuai ?? {};
   const entries = lorebook.map((entry) => ({
     case_sensitive: entry.extentions?.risu_case_sensitive ?? false,
     comment: entry.comment,
@@ -444,65 +447,69 @@ function createCard(manifest, lorebook, cardAssets) {
     use_regex: entry.useRegex,
   }));
   return {
+    ...sourceCard,
     data: {
-      alternate_greetings: [],
+      ...sourceData,
+      alternate_greetings: sourceData.alternate_greetings ?? [],
       assets: cardAssets,
       character_book: {
         entries,
         extensions: { risu_fullWordMatching: false },
       },
-      character_version: manifest.version ?? "",
-      creation_date: 0,
-      creator: manifest.creator ?? "",
-      creator_notes: manifest.description ?? "",
-      description: "",
+      character_version: manifest.version ?? sourceData.character_version ?? "",
+      creation_date: sourceData.creation_date ?? 0,
+      creator: manifest.creator ?? sourceData.creator ?? "",
+      creator_notes: manifest.description ?? sourceData.creator_notes ?? "",
+      description: sourceData.description ?? "",
       extensions: {
+        ...sourceExtensions,
         moduleNoneImage: manifest.icon ? undefined : true,
         risuai: {
-          additionalText: "",
+          ...sourceRisuAI,
+          additionalText: sourceRisuAI.additionalText ?? "",
           backgroundHTML: manifest.CSS
             ? readSource(path.dirname(manifest.__path), manifest.CSS, "CSS")
             : "",
-          bias: [],
-          defaultVariables: "",
+          bias: sourceRisuAI.bias ?? [],
+          defaultVariables: sourceRisuAI.defaultVariables ?? "",
           hideChatIcon: manifest.hideIcon ?? false,
-          inlayViewScreen: false,
-          largePortrait: false,
+          inlayViewScreen: sourceRisuAI.inlayViewScreen ?? false,
+          largePortrait: sourceRisuAI.largePortrait ?? false,
           license: manifest.license ?? "",
-          lorePlus: false,
+          lorePlus: sourceRisuAI.lorePlus ?? false,
           lowLevelAccess: manifest.lowLevelAccess ?? false,
           moduleNamespace: manifest.namespace,
-          newGenData: undefined,
-          prebuiltAssetCommand: "",
-          prebuiltAssetExclude: [],
-          prebuiltAssetStyle: "",
-          sdData: [],
+          newGenData: sourceRisuAI.newGenData,
+          prebuiltAssetCommand: sourceRisuAI.prebuiltAssetCommand ?? "",
+          prebuiltAssetExclude: sourceRisuAI.prebuiltAssetExclude ?? [],
+          prebuiltAssetStyle: sourceRisuAI.prebuiltAssetStyle ?? "",
+          sdData: sourceRisuAI.sdData ?? [],
           toggles: manifest.toggles
             ? readSource(path.dirname(manifest.__path), manifest.toggles, "toggles")
             : "",
-          utilityBot: false,
+          utilityBot: sourceRisuAI.utilityBot ?? false,
           viewScreen: "none",
-          virtualscript: "",
-          vits: {},
+          virtualscript: sourceRisuAI.virtualscript ?? "",
+          vits: sourceRisuAI.vits ?? {},
         },
       },
-      first_mes: "",
-      group_only_greetings: [],
-      mes_example: "",
+      first_mes: sourceData.first_mes ?? "",
+      group_only_greetings: sourceData.group_only_greetings ?? [],
+      mes_example: sourceData.mes_example ?? "",
       modification_date: process.env.SOURCE_DATE_EPOCH
         ? Number(process.env.SOURCE_DATE_EPOCH)
         : Math.floor(Date.now() / 1000),
       name: manifest.name,
-      nickname: "",
-      personality: "",
-      post_history_instructions: "",
-      scenario: "",
-      source: [],
-      system_prompt: "",
-      tags: manifest.tags ?? [],
+      nickname: sourceData.nickname ?? "",
+      personality: sourceData.personality ?? "",
+      post_history_instructions: sourceData.post_history_instructions ?? "",
+      scenario: sourceData.scenario ?? "",
+      source: sourceData.source ?? [],
+      system_prompt: sourceData.system_prompt ?? "",
+      tags: manifest.tags ?? sourceData.tags ?? [],
     },
-    spec: "chara_card_v3",
-    spec_version: "3.0",
+    spec: sourceCard?.spec ?? "chara_card_v3",
+    spec_version: sourceCard?.spec_version ?? "3.0",
   };
 }
 
@@ -594,7 +601,10 @@ function buildCharX(manifestPath: string, outputArgument?: string): string {
   const regex = buildRegexScripts(manifestDirectory, manifest.regex);
   const trigger = buildTriggers(manifest, manifestDirectory);
   const { cardAssets, files: assetFiles } = createAssetFiles(manifest, manifestDirectory);
-  const card = createCard(manifest, lorebook, cardAssets);
+  const sourceCard = manifest.card
+    ? JSON.parse(readSource(manifestDirectory, manifest.card, "card"))
+    : undefined;
+  const card = createCard(manifest, lorebook, cardAssets, sourceCard);
   const module = {
     description: `Module for ${manifest.name}`,
     id: createUUID(`${manifest.namespace ?? manifest.name}:module`),
