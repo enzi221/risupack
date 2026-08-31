@@ -123,6 +123,36 @@ function readSource(manifestDirectory, source, label) {
   return fs.readFileSync(path.resolve(manifestDirectory, source.file), "utf8");
 }
 
+function readCard(manifest, manifestDirectory) {
+  if (!manifest.card) {
+    return undefined;
+  }
+
+  const card = JSON.parse(readSource(manifestDirectory, manifest.card, "card"));
+  if (typeof manifest.card === "string") {
+    return card;
+  }
+
+  const data = card.data ?? {};
+  if (manifest.card.alternate_greetings !== undefined) {
+    assert(
+      Array.isArray(manifest.card.alternate_greetings),
+      "card.alternate_greetings must be an array",
+    );
+    data.alternate_greetings = manifest.card.alternate_greetings.map((source, index) =>
+      readSource(manifestDirectory, source, `card.alternate_greetings[${index}]`),
+    );
+  }
+  if (manifest.card.description !== undefined) {
+    data.description = readSource(manifestDirectory, manifest.card.description, "card.description");
+  }
+  if (manifest.card.first_mes !== undefined) {
+    data.first_mes = readSource(manifestDirectory, manifest.card.first_mes, "card.first_mes");
+  }
+  card.data = data;
+  return card;
+}
+
 function sanitizeArchiveName(name: string): string {
   const sanitized = Array.from(name, (character) =>
     character.charCodeAt(0) < 32 ? "_" : character,
@@ -192,7 +222,7 @@ function parseRegexDocument(content, fileName) {
   const { body, metadata } = parseFrontmatter(content, fileName);
   const parsed = parseRegexBody(body, fileName);
   return {
-    ableFlag: metadata.ableFlag ?? true,
+    ableFlag: metadata.flag !== undefined,
     comment: metadata.comment ?? "",
     flag: metadata.flag,
     in: parsed.in,
@@ -216,7 +246,7 @@ function buildRegexScripts(manifestDirectory, regexGroups: any[] = []) {
         "Inline regex entries require in and out",
       );
       scripts.push({
-        ableFlag: group.ableFlag ?? true,
+        ableFlag: group.flag !== undefined,
         comment: group.comment ?? "",
         flag: group.flag,
         in: group.in,
@@ -601,9 +631,7 @@ function buildCharX(manifestPath: string, outputArgument?: string): string {
   const regex = buildRegexScripts(manifestDirectory, manifest.regex);
   const trigger = buildTriggers(manifest, manifestDirectory);
   const { cardAssets, files: assetFiles } = createAssetFiles(manifest, manifestDirectory);
-  const sourceCard = manifest.card
-    ? JSON.parse(readSource(manifestDirectory, manifest.card, "card"))
-    : undefined;
+  const sourceCard = readCard(manifest, manifestDirectory);
   const card = createCard(manifest, lorebook, cardAssets, sourceCard);
   const module = {
     description: `Module for ${manifest.name}`,

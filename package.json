@@ -1,8 +1,12 @@
 {
   "name": "risupack",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Command-line tools for packing and unpacking RisuAI modules",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/enzi221/risupack.git"
+  },
   "bin": {
     "risupack": "dist/cli.js"
   },
@@ -21,7 +25,8 @@
     "build": "vp build && tsc --project tsconfig.build.json",
     "check": "tsc --noEmit",
     "prepack": "npm run check && npm run build",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "test": "vp test"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

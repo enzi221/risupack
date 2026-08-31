@@ -145,12 +145,140 @@ function takeSourcePath(directory, label, extension, takenPaths) {
 }
 
 function createRegexDocument(regex) {
-  const frontmatter = [`ableFlag: ${regex.ableFlag ?? true}`, `comment: ${regex.comment ?? ""}`];
+  const frontmatter = [`comment: ${regex.comment ?? ""}`];
   if (regex.flag !== undefined) {
     frontmatter.push(`flag: ${regex.flag}`);
   }
   frontmatter.push(`type: ${regex.type ?? "editdisplay"}`);
   return `---\n${frontmatter.join("\n")}\n---\n\nIN:\n${regex.in ?? ""}\nOUT:\n${regex.out ?? ""}\n`;
+}
+
+function createCardSources(card, files) {
+  const sourceCard = JSON.parse(JSON.stringify(card));
+  const data = sourceCard.data ?? {};
+  const risuai = data.extensions?.risuai;
+
+  const alternateGreetings = data.alternate_greetings ?? [];
+  assert(Array.isArray(alternateGreetings), "card.data.alternate_greetings must be an array");
+  for (let index = 0; index < alternateGreetings.length; index += 1) {
+    const greeting = alternateGreetings[index];
+    assert(
+      typeof greeting === "string",
+      `card.data.alternate_greetings[${index}] must be a string`,
+    );
+  }
+
+  const description = data.description ?? "";
+  const firstMessage = data.first_mes ?? "";
+  assert(typeof description === "string", "card.data.description must be a string");
+  assert(typeof firstMessage === "string", "card.data.first_mes must be a string");
+
+  delete data.alternate_greetings;
+  delete data.assets;
+  delete data.character_book;
+  delete data.character_version;
+  delete data.creator;
+  delete data.creator_notes;
+  delete data.description;
+  delete data.first_mes;
+  delete data.modification_date;
+  delete data.name;
+  delete data.tags;
+
+  if (risuai) {
+    delete risuai.backgroundHTML;
+    delete risuai.hideChatIcon;
+    delete risuai.license;
+    delete risuai.lowLevelAccess;
+    delete risuai.moduleNamespace;
+    delete risuai.toggles;
+    const defaults = {
+      additionalText: "",
+      bias: [],
+      defaultVariables: "",
+      inlayViewScreen: false,
+      largePortrait: false,
+      lorePlus: false,
+      prebuiltAssetCommand: "",
+      prebuiltAssetExclude: [],
+      prebuiltAssetStyle: "",
+      sdData: [],
+      utilityBot: false,
+      viewScreen: "none",
+      virtualscript: "",
+      vits: {},
+    };
+    for (const [key, value] of Object.entries(defaults)) {
+      if (JSON.stringify(sortKeysDeep(risuai[key])) === JSON.stringify(sortKeysDeep(value))) {
+        delete risuai[key];
+      }
+    }
+    if (Object.keys(risuai).length === 0) {
+      delete data.extensions.risuai;
+    }
+  }
+  if (data.extensions) {
+    delete data.extensions.moduleNoneImage;
+    if (Object.keys(data.extensions).length === 0) {
+      delete data.extensions;
+    }
+  }
+
+  const dataDefaults = {
+    creation_date: 0,
+    group_only_greetings: [],
+    mes_example: "",
+    nickname: "",
+    personality: "",
+    post_history_instructions: "",
+    scenario: "",
+    source: [],
+    system_prompt: "",
+  };
+  for (const [key, value] of Object.entries(dataDefaults)) {
+    if (JSON.stringify(sortKeysDeep(data[key])) === JSON.stringify(sortKeysDeep(value))) {
+      delete data[key];
+    }
+  }
+
+  if (Object.keys(data).length === 0) {
+    delete sourceCard.data;
+  } else {
+    sourceCard.data = data;
+  }
+  if (sourceCard.spec === "chara_card_v3") {
+    delete sourceCard.spec;
+  }
+  if (sourceCard.spec_version === "3.0") {
+    delete sourceCard.spec_version;
+  }
+
+  const cardRequired =
+    alternateGreetings.length > 0 ||
+    description !== "" ||
+    firstMessage !== "" ||
+    Object.keys(sourceCard).length > 0;
+  if (!cardRequired) {
+    return undefined;
+  }
+
+  const alternateGreetingFiles = alternateGreetings.map((greeting, index) => {
+    const file = `alternate_greetings/${index + 1}.md`;
+    files.set(file, Buffer.from(greeting, "utf8"));
+    return file;
+  });
+  files.set("description.md", Buffer.from(description, "utf8"));
+  files.set("first_mes.md", Buffer.from(firstMessage, "utf8"));
+  files.set(
+    "card.json",
+    Buffer.from(`${JSON.stringify(sortKeysDeep(sourceCard), null, 2)}\n`, "utf8"),
+  );
+  return {
+    alternate_greetings: alternateGreetingFiles,
+    description: "description.md",
+    file: "card.json",
+    first_mes: "first_mes.md",
+  };
 }
 
 function createExpandedModuleSources(
@@ -229,7 +357,7 @@ function createExpandedModuleSources(
 
   const risuai = card.data?.extensions?.risuai ?? {};
   const manifest: Record<string, any> = {
-    card: "card.json",
+    card: createCardSources(card, files),
     creator: card.data?.creator,
     description: card.data?.creator_notes ?? moduleData.description ?? "",
     folders,
@@ -416,14 +544,12 @@ function unpackCharX(inputPath: string, outputPath: string): string {
   const card = JSON.parse(cardEntry.data.toString("utf8"));
 
   let decodedModule;
-  let decodedModuleName;
   if (extracted.has("module.risum")) {
     const moduleEntry = extracted.get("module.risum");
     assert(moduleEntry, "CharX archive does not contain module.risum");
     assert(!moduleEntry.directory, "module.risum is a directory");
     const map = fs.readFileSync(RPACK_MAP_PATH);
     decodedModule = decodeModule(moduleEntry.data, map);
-    decodedModuleName = extracted.has("module.json") ? "module.decoded.json" : "module.json";
   }
 
   const expandedSources = decodedModule
@@ -431,7 +557,7 @@ function unpackCharX(inputPath: string, outputPath: string): string {
     : new Map();
   for (const name of expandedSources.keys()) {
     assert(
-      !extracted.has(name),
+      name === "card.json" || !extracted.has(name),
       `Generated module source conflicts with an archive entry: ${name}`,
     );
   }
@@ -440,7 +566,11 @@ function unpackCharX(inputPath: string, outputPath: string): string {
   fs.mkdirSync(resolvedOutputPath, { recursive: true });
 
   for (const [name, entry] of extracted) {
-    if (name === "module.risum") {
+    if (
+      name === "module.risum" ||
+      (decodedModule && name === "card.json") ||
+      expandedSources.has(name)
+    ) {
       continue;
     }
     const destination = path.join(resolvedOutputPath, ...name.split("/"));
@@ -452,13 +582,6 @@ function unpackCharX(inputPath: string, outputPath: string): string {
     fs.writeFileSync(destination, entry.data);
   }
 
-  if (decodedModule) {
-    fs.writeFileSync(
-      path.join(resolvedOutputPath, decodedModuleName),
-      `${JSON.stringify(decodedModule, null, 2)}\n`,
-    );
-  }
-
   for (const [name, data] of expandedSources) {
     const destination = path.join(resolvedOutputPath, ...name.split("/"));
     fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -466,9 +589,8 @@ function unpackCharX(inputPath: string, outputPath: string): string {
   }
 
   const relativeOutput = path.relative(process.cwd(), resolvedOutputPath) || ".";
-  const moduleNote = decodedModule ? ` and decoded ${decodedModuleName}` : "";
   console.log(
-    `Unpacked ${entries.length - (decodedModule ? 1 : 0)} archive files to ${relativeOutput}${moduleNote}`,
+    `Unpacked ${entries.length - (decodedModule ? 1 : 0)} archive files to ${relativeOutput}`,
   );
   return resolvedOutputPath;
 }

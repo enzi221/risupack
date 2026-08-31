@@ -25,3 +25,12 @@ release. Add a tool name to select part of the graph. For example, run
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+# Publishing
+
+- Publish through `.github/workflows/publish.yml` using GitHub OIDC. Do not add an npm token secret.
+- Keep the Git tag equal to `v` followed by the version in `package.json`.
+- Push the release commit before pushing the release tag.
+- Do not create or push a release tag unless the user explicitly requests publication.
+- Keep manual versioning unless the user explicitly requests automated version and changelog management.
+- Configure the npm trusted publisher for GitHub user `enzi221`, repository `risupack`, workflow filename `publish.yml`, and allowed action `npm publish`.

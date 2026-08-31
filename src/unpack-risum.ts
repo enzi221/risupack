@@ -111,7 +111,6 @@ function writeSources(outputDirectory, decodedModule, assetSources) {
   const manifest = JSON.parse(manifestSource.toString("utf8"));
   manifest.assets = assetSources;
   sources.set("charx.json", Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, "utf8"));
-  sources.set("module.json", Buffer.from(`${JSON.stringify(decodedModule, null, 2)}\n`, "utf8"));
 
   for (const [name, data] of sources) {
     const destination = path.join(outputDirectory, ...name.split("/"));
