@@ -146,11 +146,30 @@ function readCard(manifest, manifestDirectory) {
       readSource(manifestDirectory, source, `card.alternate_greetings[${index}]`),
     );
   }
+  if (manifest.card.defaultVariables !== undefined) {
+    assert(
+      Array.isArray(manifest.card.defaultVariables) &&
+        manifest.card.defaultVariables.every((line) => typeof line === "string"),
+      "card.defaultVariables must be an array of strings",
+    );
+    const extensions = data.extensions ?? {};
+    const risuai = extensions.risuai ?? {};
+    risuai.defaultVariables = manifest.card.defaultVariables.join("\n");
+    extensions.risuai = risuai;
+    data.extensions = extensions;
+  }
   if (manifest.card.description !== undefined) {
     data.description = readSource(manifestDirectory, manifest.card.description, "card.description");
   }
   if (manifest.card.first_mes !== undefined) {
     data.first_mes = readSource(manifestDirectory, manifest.card.first_mes, "card.first_mes");
+  }
+  if (manifest.card.globalNoteOverride !== undefined) {
+    data.post_history_instructions = readSource(
+      manifestDirectory,
+      manifest.card.globalNoteOverride,
+      "card.globalNoteOverride",
+    );
   }
   card.data = data;
   return card;

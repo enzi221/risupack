@@ -193,17 +193,21 @@ Use a card source object to keep the character description and greetings in sepa
 {
   "card": {
     "alternate_greetings": ["alternate_greetings/1.md", "alternate_greetings/2.md"],
+    "defaultVariables": ["language=ko", "", "cards=enabled"],
     "description": "description.md",
     "file": "card.json",
-    "first_mes": "first_mes.md"
+    "first_mes": "first_mes.md",
+    "globalNoteOverride": "global_note_override.md"
   }
 }
 ```
 
 - `alternate_greetings`: Alternate greeting sources in display order
+- `defaultVariables`: RisuAI default variables as one string per line
 - `description`: Character description source
 - `file`: Optional JSON source for other character card fields
 - `first_mes`: First message source
+- `globalNoteOverride`: Post-history instruction source that overrides the global note
 
 When `file` is omitted, the builder starts from an empty character card. A referenced `card.json` may contain `{}` when all required character content is stored in the external text files. Put other Character Card fields under `data`.
 

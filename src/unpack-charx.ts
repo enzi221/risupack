@@ -168,10 +168,14 @@ function createCardSources(card, files) {
     );
   }
 
+  const defaultVariables = risuai?.defaultVariables ?? "";
   const description = data.description ?? "";
   const firstMessage = data.first_mes ?? "";
+  const globalNoteOverride = data.post_history_instructions ?? "";
+  assert(typeof defaultVariables === "string", "card default variables must be a string");
   assert(typeof description === "string", "card.data.description must be a string");
   assert(typeof firstMessage === "string", "card.data.first_mes must be a string");
+  assert(typeof globalNoteOverride === "string", "card global note override must be a string");
 
   delete data.alternate_greetings;
   delete data.assets;
@@ -183,10 +187,12 @@ function createCardSources(card, files) {
   delete data.first_mes;
   delete data.modification_date;
   delete data.name;
+  delete data.post_history_instructions;
   delete data.tags;
 
   if (risuai) {
     delete risuai.backgroundHTML;
+    delete risuai.defaultVariables;
     delete risuai.hideChatIcon;
     delete risuai.license;
     delete risuai.lowLevelAccess;
@@ -195,7 +201,6 @@ function createCardSources(card, files) {
     const defaults = {
       additionalText: "",
       bias: [],
-      defaultVariables: "",
       inlayViewScreen: false,
       largePortrait: false,
       lorePlus: false,
@@ -230,7 +235,6 @@ function createCardSources(card, files) {
     mes_example: "",
     nickname: "",
     personality: "",
-    post_history_instructions: "",
     scenario: "",
     source: [],
     system_prompt: "",
@@ -253,11 +257,14 @@ function createCardSources(card, files) {
     delete sourceCard.spec_version;
   }
 
+  const baseCardRequired = Object.keys(sourceCard).length > 0;
   const cardRequired =
     alternateGreetings.length > 0 ||
+    defaultVariables !== "" ||
     description !== "" ||
     firstMessage !== "" ||
-    Object.keys(sourceCard).length > 0;
+    globalNoteOverride !== "" ||
+    baseCardRequired;
   if (!cardRequired) {
     return undefined;
   }
@@ -269,16 +276,26 @@ function createCardSources(card, files) {
   });
   files.set("description.md", Buffer.from(description, "utf8"));
   files.set("first_mes.md", Buffer.from(firstMessage, "utf8"));
-  files.set(
-    "card.json",
-    Buffer.from(`${JSON.stringify(sortKeysDeep(sourceCard), null, 2)}\n`, "utf8"),
-  );
-  return {
+  const cardSources: Record<string, any> = {
     alternate_greetings: alternateGreetingFiles,
     description: "description.md",
-    file: "card.json",
     first_mes: "first_mes.md",
   };
+  if (defaultVariables !== "") {
+    cardSources.defaultVariables = defaultVariables.split("\n");
+  }
+  if (baseCardRequired) {
+    cardSources.file = "card.json";
+    files.set(
+      cardSources.file,
+      Buffer.from(`${JSON.stringify(sortKeysDeep(sourceCard), null, 2)}\n`, "utf8"),
+    );
+  }
+  if (globalNoteOverride !== "") {
+    cardSources.globalNoteOverride = "global_note_override.md";
+    files.set(cardSources.globalNoteOverride, Buffer.from(globalNoteOverride, "utf8"));
+  }
+  return cardSources;
 }
 
 function createExpandedModuleSources(

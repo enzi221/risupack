@@ -21,8 +21,10 @@ function createFixture() {
   const asset = Buffer.from([0, 1, 2, 3]);
   const alternateGreeting = "Alternate greeting\n";
   const CSS = "<style>\n.fixture { color: red; }\n</style>\n";
+  const defaultVariables = "language=ko\n\ncards=enabled";
   const description = "Fixture character description\n";
   const firstMessage = "Fixture first message\n";
+  const globalNoteOverride = "Fixture global note override\n";
   const lorebook = "Fixture lore\n";
   const regex = [
     "---",
@@ -48,10 +50,12 @@ function createFixture() {
         data: {
           extensions: {
             risuai: {
+              defaultVariables,
               utilityBot: true,
             },
           },
           nickname: "Fixture nickname",
+          post_history_instructions: globalNoteOverride,
         },
         spec: "chara_card_v3",
         spec_version: "3.0",
@@ -116,8 +120,10 @@ function createFixture() {
     alternateGreeting,
     asset,
     CSS,
+    defaultVariables,
     description,
     firstMessage,
+    globalNoteOverride,
     lorebook,
     manifestPath: path.join(root, "charx.json"),
     regex,
@@ -165,9 +171,11 @@ describe("risupack", () => {
       CSS: "style.html",
       card: {
         alternate_greetings: ["alternate_greetings/1.md"],
+        defaultVariables: ["language=ko", "", "cards=enabled"],
         description: "description.md",
         file: "card.json",
         first_mes: "first_mes.md",
+        globalNoteOverride: "global_note_override.md",
       },
       name: "Fixture",
       namespace: "test.fixture",
@@ -185,11 +193,15 @@ describe("risupack", () => {
     expect(
       fs.readFileSync(path.join(outputPath, manifest.card.alternate_greetings[0]), "utf8"),
     ).toBe(fixture.alternateGreeting);
+    expect(manifest.card.defaultVariables.join("\n")).toBe(fixture.defaultVariables);
     expect(fs.readFileSync(path.join(outputPath, manifest.card.description), "utf8")).toBe(
       fixture.description,
     );
     expect(fs.readFileSync(path.join(outputPath, manifest.card.first_mes), "utf8")).toBe(
       fixture.firstMessage,
+    );
+    expect(fs.readFileSync(path.join(outputPath, manifest.card.globalNoteOverride), "utf8")).toBe(
+      fixture.globalNoteOverride,
     );
     const sourceCard = JSON.parse(fs.readFileSync(path.join(outputPath, "card.json"), "utf8"));
     expect(sourceCard.data).toEqual({
@@ -217,12 +229,19 @@ describe("risupack", () => {
         "utf8",
       ),
     ).toBe(fixture.alternateGreeting);
+    expect(rebuiltManifest.card.defaultVariables.join("\n")).toBe(fixture.defaultVariables);
     expect(
       fs.readFileSync(path.join(rebuiltOutputPath, rebuiltManifest.card.description), "utf8"),
     ).toBe(fixture.description);
     expect(
       fs.readFileSync(path.join(rebuiltOutputPath, rebuiltManifest.card.first_mes), "utf8"),
     ).toBe(fixture.firstMessage);
+    expect(
+      fs.readFileSync(
+        path.join(rebuiltOutputPath, rebuiltManifest.card.globalNoteOverride),
+        "utf8",
+      ),
+    ).toBe(fixture.globalNoteOverride);
   });
 
   it("builds external card sources without a base card file", () => {
@@ -231,7 +250,13 @@ describe("risupack", () => {
     const outputPath = path.join(fixture.root, "fileless-card-unpacked");
     const manifest = JSON.parse(fs.readFileSync(fixture.manifestPath, "utf8"));
     delete manifest.card.file;
+    manifest.card.defaultVariables = fixture.defaultVariables.split("\n");
+    manifest.card.globalNoteOverride = "global_note_override.md";
     fs.rmSync(path.join(fixture.root, "card.json"));
+    fs.writeFileSync(
+      path.join(fixture.root, manifest.card.globalNoteOverride),
+      fixture.globalNoteOverride,
+    );
     fs.writeFileSync(fixture.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
     buildCharX(fixture.manifestPath, archivePath);
@@ -240,15 +265,21 @@ describe("risupack", () => {
     const unpackedManifest = JSON.parse(
       fs.readFileSync(path.join(outputPath, "charx.json"), "utf8"),
     );
+    expect(unpackedManifest.card.file).toBeUndefined();
+    expect(fs.existsSync(path.join(outputPath, "card.json"))).toBe(false);
     expect(
       fs.readFileSync(path.join(outputPath, unpackedManifest.card.alternate_greetings[0]), "utf8"),
     ).toBe(fixture.alternateGreeting);
+    expect(unpackedManifest.card.defaultVariables.join("\n")).toBe(fixture.defaultVariables);
     expect(fs.readFileSync(path.join(outputPath, unpackedManifest.card.description), "utf8")).toBe(
       fixture.description,
     );
     expect(fs.readFileSync(path.join(outputPath, unpackedManifest.card.first_mes), "utf8")).toBe(
       fixture.firstMessage,
     );
+    expect(
+      fs.readFileSync(path.join(outputPath, unpackedManifest.card.globalNoteOverride), "utf8"),
+    ).toBe(fixture.globalNoteOverride);
   });
 
   it("does not create card sources for a cardless module", () => {
