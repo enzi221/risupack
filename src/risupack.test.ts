@@ -225,6 +225,32 @@ describe("risupack", () => {
     ).toBe(fixture.firstMessage);
   });
 
+  it("builds external card sources without a base card file", () => {
+    const fixture = createFixture();
+    const archivePath = path.join(fixture.root, "fileless-card.charx");
+    const outputPath = path.join(fixture.root, "fileless-card-unpacked");
+    const manifest = JSON.parse(fs.readFileSync(fixture.manifestPath, "utf8"));
+    delete manifest.card.file;
+    fs.rmSync(path.join(fixture.root, "card.json"));
+    fs.writeFileSync(fixture.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    buildCharX(fixture.manifestPath, archivePath);
+    unpackCharX(archivePath, outputPath);
+
+    const unpackedManifest = JSON.parse(
+      fs.readFileSync(path.join(outputPath, "charx.json"), "utf8"),
+    );
+    expect(
+      fs.readFileSync(path.join(outputPath, unpackedManifest.card.alternate_greetings[0]), "utf8"),
+    ).toBe(fixture.alternateGreeting);
+    expect(fs.readFileSync(path.join(outputPath, unpackedManifest.card.description), "utf8")).toBe(
+      fixture.description,
+    );
+    expect(fs.readFileSync(path.join(outputPath, unpackedManifest.card.first_mes), "utf8")).toBe(
+      fixture.firstMessage,
+    );
+  });
+
   it("does not create card sources for a cardless module", () => {
     const fixture = createFixture();
     const archivePath = path.join(fixture.root, "cardless.charx");

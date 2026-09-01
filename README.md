@@ -202,10 +202,10 @@ Use a card source object to keep the character description and greetings in sepa
 
 - `alternate_greetings`: Alternate greeting sources in display order
 - `description`: Character description source
-- `file`: JSON source for other character card fields
+- `file`: Optional JSON source for other character card fields
 - `first_mes`: First message source
 
-`card.json` may contain `{}` when all required character content is stored in the external text files. Put other Character Card fields under `data`.
+When `file` is omitted, the builder starts from an empty character card. A referenced `card.json` may contain `{}` when all required character content is stored in the external text files. Put other Character Card fields under `data`.
 
 The unpack commands create character sources only when the packaged card contains character-specific values.
 

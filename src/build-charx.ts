@@ -128,11 +128,14 @@ function readCard(manifest, manifestDirectory) {
     return undefined;
   }
 
-  const card = JSON.parse(readSource(manifestDirectory, manifest.card, "card"));
   if (typeof manifest.card === "string") {
-    return card;
+    return JSON.parse(readSource(manifestDirectory, manifest.card, "card"));
   }
 
+  const baseSourcePresent = "content" in manifest.card || "file" in manifest.card;
+  const card = baseSourcePresent
+    ? JSON.parse(readSource(manifestDirectory, manifest.card, "card"))
+    : {};
   const data = card.data ?? {};
   if (manifest.card.alternate_greetings !== undefined) {
     assert(
