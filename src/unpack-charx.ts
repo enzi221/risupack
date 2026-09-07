@@ -395,7 +395,16 @@ function createExpandedModuleSources(
     files.set("style.html", Buffer.from(CSS, "utf8"));
   }
   const toggles = risuai.toggles ?? moduleData.customModuleToggle;
-  if (toggles) {
+  const emptyLegacyToggles =
+    toggles &&
+    typeof toggles === "object" &&
+    !Array.isArray(toggles) &&
+    Object.keys(toggles).length === 0;
+  assert(
+    toggles === undefined || typeof toggles === "string" || emptyLegacyToggles,
+    "card toggles must be a string or an empty object",
+  );
+  if (typeof toggles === "string" && toggles !== "") {
     manifest.toggles = "toggles.txt";
     files.set("toggles.txt", Buffer.from(toggles, "utf8"));
   }

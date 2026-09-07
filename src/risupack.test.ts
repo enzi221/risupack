@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { buildCharX } from "./build-charx.js";
-import { unpackCharX } from "./unpack-charx.js";
+import { createExpandedModuleSources, unpackCharX } from "./unpack-charx.js";
 
 const temporaryRoots = new Set<string>();
 
@@ -158,6 +158,28 @@ afterEach(() => {
 });
 
 describe("risupack", () => {
+  it("treats empty legacy toggle objects as absent", () => {
+    const files = createExpandedModuleSources(
+      {
+        data: {
+          extensions: {
+            risuai: {
+              toggles: {},
+            },
+          },
+        },
+      },
+      {
+        module: {},
+        type: "risuModule",
+      },
+    );
+
+    const manifest = JSON.parse(files.get("charx.json")?.toString("utf8") ?? "{}");
+    expect(manifest.toggles).toBeUndefined();
+    expect(files.has("toggles.txt")).toBe(false);
+  });
+
   it("round-trips expanded CharX module sources", () => {
     const fixture = createFixture();
     const archivePath = path.join(fixture.root, "fixture.charx");
