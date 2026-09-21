@@ -1,10 +1,11 @@
+import childProcess from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { buildCharX } from "./build-charx.js";
+import { buildCharX, minifyHTML } from "./build-charx.js";
 import { createExpandedModuleSources, unpackCharX } from "./unpack-charx.js";
 
 const temporaryRoots = new Set<string>();
@@ -211,7 +212,9 @@ describe("risupack", () => {
       fixture.trigger,
     );
     expect(fs.readFileSync(path.join(outputPath, manifest.assets[0].file))).toEqual(fixture.asset);
-    expect(fs.readFileSync(path.join(outputPath, manifest.CSS), "utf8")).toBe(fixture.CSS);
+    expect(fs.readFileSync(path.join(outputPath, manifest.CSS), "utf8")).toBe(
+      "<style>.fixture{color:red}</style>",
+    );
     expect(
       fs.readFileSync(path.join(outputPath, manifest.card.alternate_greetings[0]), "utf8"),
     ).toBe(fixture.alternateGreeting);
@@ -365,5 +368,53 @@ describe("risupack", () => {
       "ZIP entry escapes the output directory: ../x.json",
     );
     expect(fs.existsSync(path.join(fixture.root, "x.json"))).toBe(false);
+  });
+
+  it("prints help for CLI commands", () => {
+    const cliPath = path.resolve(import.meta.dirname, "../dist/cli.js");
+
+    const rootHelp = childProcess.spawnSync(process.execPath, [cliPath, "--help"], {
+      encoding: "utf8",
+    });
+    expect(rootHelp.status).toBe(0);
+    expect(rootHelp.stdout).toContain("Usage: risupack <command> [arguments]");
+
+    const commandHelp = childProcess.spawnSync(
+      process.execPath,
+      [cliPath, "build-charx", "--help"],
+      {
+        encoding: "utf8",
+      },
+    );
+    expect(commandHelp.status).toBe(0);
+    expect(commandHelp.stdout.trim()).toBe(
+      "Usage: risupack build-charx <manifest.json> [output.charx]",
+    );
+
+    const subHelp = childProcess.spawnSync(process.execPath, [cliPath, "help", "bundle-lua"], {
+      encoding: "utf8",
+    });
+    expect(subHelp.status).toBe(0);
+    expect(subHelp.stdout.trim()).toBe("Usage: risupack bundle-lua <entry.lua> <output.lua>");
+  });
+
+  it("minifies HTML and CSS while preserving CBS templates", () => {
+    const input = [
+      "<!-- HTML comment -->",
+      "<style>",
+      "  /* CSS comment */",
+      "  .box {",
+      "    color: red;",
+      "    --theme: {{#if_pure {{? {{getglobalvar::theme}}=0 }} }}'♦️'{{/if}};",
+      "    content: '/* not a comment */';",
+      "  }",
+      "</style>",
+      "<!-- Another comment -->",
+    ].join("\n");
+
+    const expected =
+      "<style>.box{color:red;--theme:{{#if_pure {{? {{getglobalvar::theme}}=0 }} }}'♦️'{{/if}};content:'/* not a comment */'}</style>";
+
+    expect(minifyHTML(input)).toBe(expected);
   });
 });

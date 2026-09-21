@@ -326,7 +326,7 @@ A trigger without `lua` must provide a RisuAI `effect` array directly. This form
 
 ## CSS and toggles
 
-risupack copies CSS and toggle sources into the package without changing their contents.
+risupack minifies CSS sources and copies toggle sources into the package without changing their contents.
 
 Wrap custom styles in a `<style>` element.
 
