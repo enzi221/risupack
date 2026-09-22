@@ -1,4 +1,4 @@
-export { buildCharX, minifyHTML } from "./build-charx.js";
+export { buildCharX } from "./build-charx.js";
 export { bundleLua } from "./bundle.js";
 export { parseModuleBlock } from "./inspect-risusave.js";
 export {

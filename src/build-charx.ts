@@ -111,93 +111,6 @@ function getAssetCategory(extension) {
   return "other";
 }
 
-function extractTemplates(input: string): { templates: string[]; text: string } {
-  const templates: string[] = [];
-  let result = "";
-  let i = 0;
-  while (i < input.length) {
-    if (input.startsWith("{{", i)) {
-      const start = i;
-      let depth = 0;
-      let j = i;
-      while (j < input.length) {
-        if (input.startsWith("{{", j)) {
-          depth += 1;
-          j += 2;
-        } else if (input.startsWith("}}", j)) {
-          depth -= 1;
-          j += 2;
-          if (depth === 0) {
-            break;
-          }
-        } else {
-          j += 1;
-        }
-      }
-      if (depth === 0) {
-        const tpl = input.slice(start, j);
-        templates.push(tpl);
-        result += `@@RISU_TPL_${templates.length - 1}@@`;
-        i = j;
-        continue;
-      }
-    }
-    result += input[i];
-    i += 1;
-  }
-  return { templates, text: result };
-}
-
-function extractStrings(input: string): { strings: string[]; text: string } {
-  const strings: string[] = [];
-  const text = input.replace(/("([^"\\]|\\.)*")|('([^'\\]|\\.)*')/g, (match: string) => {
-    strings.push(match);
-    return `@@RISU_STR_${strings.length - 1}@@`;
-  });
-  return { strings, text };
-}
-
-function minifyCSS(css: string): string {
-  const { strings, text: withoutStrings } = extractStrings(css);
-  let result = withoutStrings.replace(/\/\*[\s\S]*?\*\//g, "");
-  result = result.replace(/\s+/g, " ");
-  result = result.replace(/\s*([{};,])\s*/g, "$1");
-  result = result.replace(/:\s+/g, ":");
-  result = result.replace(/;+/g, ";");
-  result = result.replace(/;}/g, "}");
-  result = result.replace(
-    /@@RISU_STR_(\d+)@@/g,
-    (_, index: string) => strings[Number(index)] ?? "",
-  );
-  return result.trim();
-}
-
-function minifyHTML(html: string): string {
-  const { templates, text: withoutTemplates } = extractTemplates(html);
-  let result = withoutTemplates.replace(/<!--[\s\S]*?-->/g, "");
-  if (result.includes("<style")) {
-    result = result.replace(
-      /<style\b([^>]*)>([\s\S]*?)<\/style>/gi,
-      (_match: string, attrs: string, css: string) => {
-        const trimmedAttrs = attrs
-          .replace(/\s+/g, " ")
-          .replace(/\s*=\s*/g, "=")
-          .trim();
-        const minified = minifyCSS(css);
-        return `<style${trimmedAttrs ? ` ${trimmedAttrs}` : ""}>${minified}</style>`;
-      },
-    );
-  } else if (!result.includes("<")) {
-    result = minifyCSS(result);
-  }
-  result = result.replace(/>\s+</g, "><");
-  result = result.replace(
-    /@@RISU_TPL_(\d+)@@/g,
-    (_, index: string) => templates[Number(index)] ?? "",
-  );
-  return result.trim();
-}
-
 function readSource(manifestDirectory, source, label) {
   if (typeof source === "string") {
     return fs.readFileSync(path.resolve(manifestDirectory, source), "utf8");
@@ -607,7 +520,7 @@ function createCard(manifest, lorebook, cardAssets, sourceCard?: Record<string, 
           ...sourceRisuAI,
           additionalText: sourceRisuAI.additionalText ?? "",
           backgroundHTML: manifest.CSS
-            ? minifyHTML(readSource(path.dirname(manifest.__path), manifest.CSS, "CSS"))
+            ? readSource(path.dirname(manifest.__path), manifest.CSS, "CSS")
             : "",
           bias: sourceRisuAI.bias ?? [],
           defaultVariables: sourceRisuAI.defaultVariables ?? "",
@@ -774,4 +687,4 @@ function buildCharX(manifestPath: string, outputArgument?: string): string {
   return outputPath;
 }
 
-export { buildCharX, minifyHTML };
+export { buildCharX };

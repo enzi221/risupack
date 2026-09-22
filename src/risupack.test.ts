@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { buildCharX, minifyHTML } from "./build-charx.js";
+import { buildCharX } from "./build-charx.js";
 import { createExpandedModuleSources, unpackCharX } from "./unpack-charx.js";
 
 const temporaryRoots = new Set<string>();
@@ -211,9 +211,7 @@ describe("risupack", () => {
       fixture.trigger,
     );
     expect(fs.readFileSync(path.join(outputPath, manifest.assets[0].file))).toEqual(fixture.asset);
-    expect(fs.readFileSync(path.join(outputPath, manifest.CSS), "utf8")).toBe(
-      "<style>.fixture{color:red}</style>",
-    );
+    expect(fs.readFileSync(path.join(outputPath, manifest.CSS), "utf8")).toBe(fixture.CSS);
     expect(
       fs.readFileSync(path.join(outputPath, manifest.card.alternate_greetings[0]), "utf8"),
     ).toBe(fixture.alternateGreeting);
@@ -367,25 +365,5 @@ describe("risupack", () => {
       "ZIP entry escapes the output directory: ../x.json",
     );
     expect(fs.existsSync(path.join(fixture.root, "x.json"))).toBe(false);
-  });
-
-  it("minifies HTML and CSS while preserving CBS templates", () => {
-    const input = [
-      "<!-- HTML comment -->",
-      "<style>",
-      "  /* CSS comment */",
-      "  .box {",
-      "    color: red;",
-      "    --theme: {{#if_pure {{? {{getglobalvar::theme}}=0 }} }}'♦️'{{/if}};",
-      "    content: '/* not a comment */';",
-      "  }",
-      "</style>",
-      "<!-- Another comment -->",
-    ].join("\n");
-
-    const expected =
-      "<style>.box{color:red;--theme:{{#if_pure {{? {{getglobalvar::theme}}=0 }} }}'♦️'{{/if}};content:'/* not a comment */'}</style>";
-
-    expect(minifyHTML(input)).toBe(expected);
   });
 });
